@@ -1,0 +1,12 @@
+{application, erlqueue,
+ [
+  {description, ""},
+  {vsn, "1.0.0"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { erlqueue_app, []}},
+  {env, []}
+ ]}.
