@@ -27,34 +27,34 @@ basic_test_() ->
      fun teardown/1,
      [{<<"New works">>,
         fun() ->
-            ?assertEqual({ok, test}, erlqueue:new(test, 1024))
+            ?assertEqual({ok, test}, erlqueue:new(test, [{size, 1024}]))
         end},
        {<<"Detection of double creation works">>,
         fun() ->
-            ?assertEqual({ok, test}, erlqueue:new(test, 1024)),
-            ?assertEqual({error, already_exists}, erlqueue:new(test, 1024))
+            ?assertEqual({ok, test}, erlqueue:new(test, [{size, 1024}])),
+            ?assertEqual({error, already_exists}, erlqueue:new(test, [{size, 1024}]))
         end},
        {<<"Queue/Dequeue works">>,
         fun() ->
-            ?assertEqual({ok, test}, erlqueue:new(test, 1024)),
+            ?assertEqual({ok, test}, erlqueue:new(test, [{size, 1024}])),
             ?assertEqual(ok, erlqueue:queue(test, hello)),
             ?assertEqual({ok, hello}, erlqueue:dequeue(test))
         end},
        {<<"Empty Dequeue works">>,
         fun() ->
-            ?assertEqual({ok, test}, erlqueue:new(test, 1024)),
+            ?assertEqual({ok, test}, erlqueue:new(test, [{size, 1024}])),
             ?assertEqual(not_found, erlqueue:dequeue(test))
         end},
        {<<"Full queue works">>,
         fun() ->
-            ?assertEqual({ok, test},  erlqueue:new(test, 64)),
+            ?assertEqual({ok, test},  erlqueue:new(test, [{size, 64}])),
             ?assertEqual(ok, erlqueue:queue(test, hellohello)),
             ?assertEqual(ok, erlqueue:queue(test, hellohello)),
             ?assertEqual(queue_is_full, erlqueue:queue(test, hellohello))
         end},
        {<<"Circular buffer works">>,
         fun() ->
-            ?assertEqual({ok, test}, erlqueue:new(test, 1024 * 2)),
+            ?assertEqual({ok, test}, erlqueue:new(test, [{size, 1024 * 2}])),
             N = 50,
             lists:foreach(fun(I) ->
                             ?assertEqual(ok, erlqueue:queue(test, I))
@@ -65,7 +65,7 @@ basic_test_() ->
         end},
        {<<"Roll around the buffer shouldn't crash">>,
         fun() ->
-            ?assertEqual({ok, test}, erlqueue:new(test, 64)),
+            ?assertEqual({ok, test}, erlqueue:new(test, [{size, 64}])),
             ?assertEqual(ok, erlqueue:queue(test, a1)),
             ?assertEqual(ok, erlqueue:queue(test, a12)),
             ?assertEqual({ok, a1}, erlqueue:dequeue(test)),
@@ -79,7 +79,7 @@ basic_test_() ->
         end},
        {<<"Proper order">>,
         fun() ->
-          ?assertEqual({ok, test}, erlqueue:new(test, 1024 * 2)),
+          ?assertEqual({ok, test}, erlqueue:new(test, [{size, 1024 * 2}])),
           L = lists:seq(0, 50),
           lists:foreach(fun(N) ->
                           ?assertEqual(ok, erlqueue:queue(test, N))
@@ -95,7 +95,7 @@ basic_test_() ->
         end},
        {<<"Tricky queue full detection">>,
         fun() ->
-            ?assertEqual({ok, test}, erlqueue:new(test, 64)),
+            ?assertEqual({ok, test}, erlqueue:new(test, [{size, 64}])),
             ?assertEqual(ok, erlqueue:queue(test, a1)),
             ?assertEqual(ok, erlqueue:queue(test, a1)),
             ?assertEqual(ok, erlqueue:queue(test, a1)),
@@ -115,7 +115,7 @@ load_test_() ->
      fun(_SetupData) ->
         {timeout, 90,
           [fun() ->
-            {ok, test} = erlqueue:new(test, 4096 * 1024 - 128),
+            {ok, test} = erlqueue:new(test, [{size, 4096 * 1024 - 128}]),
             ?assertEqual(ok, big:bang(100000, 10, 60))
            end]}
       end

@@ -27,9 +27,14 @@
          queue/2,
          dequeue/1]).
 
--spec new(Name :: atom(), Size :: non_neg_integer()) ->
+-type new_opts() :: proplists:proplist().
+-export_type([new_opts/0]).
+
+-spec new(Name :: atom(),
+          Opts :: new_opts()) ->
         {error, already_exists | shmem_creation_failed} | {ok, atom()}.
-new(Name, Size) ->
+new(Name, Opts) ->
+    Size = proplists:get_value(size, Opts),
     nif_new(Name, Size).
 
 -spec delete(Name :: atom()) -> error | {ok, atom()}.
