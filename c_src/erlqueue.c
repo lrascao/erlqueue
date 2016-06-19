@@ -34,6 +34,7 @@ static ERL_NIF_TERM ATOM_NOT_FOUND;
 static ERL_NIF_TERM ATOM_ALREADY_EXISTS;
 static ERL_NIF_TERM ATOM_SHMEM_CREATION_FAILED;
 static ERL_NIF_TERM ATOM_NO_QUEUE;
+static ERL_NIF_TERM ATOM_QUEUE_FULL;
 
 typedef struct {
   char name[64];
@@ -136,7 +137,8 @@ static ERL_NIF_TERM nif_queue(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[
     if (q_hashed == NULL)
       return enif_make_tuple2(env, ATOM_ERROR, ATOM_NO_QUEUE);
 
-    lqueue_queue(q_hashed->q, (void*) bin.data, bin.size);
+    if (lqueue_queue(q_hashed->q, (void*) bin.data, bin.size) == 1)
+      return ATOM_QUEUE_FULL;
     return ATOM_OK;
 }
 
@@ -174,6 +176,7 @@ static void init(ErlNifEnv *env)
   ATOM_ALREADY_EXISTS = enif_make_atom(env, "already_exists");
   ATOM_SHMEM_CREATION_FAILED = enif_make_atom(env, "shmem_creation_failed");
   ATOM_NO_QUEUE = enif_make_atom(env, "no_queue");
+  ATOM_QUEUE_FULL = enif_make_atom(env, "queue_is_full");
 }
 
 static int on_load(ErlNifEnv* env, void** priv_data, ERL_NIF_TERM load_info)

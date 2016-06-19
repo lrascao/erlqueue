@@ -47,7 +47,9 @@ test:
 	- $(REBAR) eunit
 
 distclean: clean
-	- rm -rf _build
+	- rm -rf .rebar
+	- rm -rf deps
+	- rm -rf ebin
 	- $(REBAR) clean
 
 rebuild: distclean compile dialyze

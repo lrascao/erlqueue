@@ -25,57 +25,104 @@ basic_test_() ->
     {foreach,
      fun setup/0,
      fun teardown/1,
-     [
-       {<<"New works">>,
+     [{<<"New works">>,
         fun() ->
-            ?assertEqual({ok, test}, erlqueue:new(test, 1024)),
-            ?assertEqual(ok, erlqueue:delete(test))
+            ?assertEqual({ok, test}, erlqueue:new(test, 1024))
         end},
        {<<"Detection of double creation works">>,
         fun() ->
             ?assertEqual({ok, test}, erlqueue:new(test, 1024)),
-            ?assertEqual({error, already_exists}, erlqueue:new(test, 1024)),
-            ?assertEqual(ok, erlqueue:delete(test))
+            ?assertEqual({error, already_exists}, erlqueue:new(test, 1024))
         end},
        {<<"Queue/Dequeue works">>,
         fun() ->
             ?assertEqual({ok, test}, erlqueue:new(test, 1024)),
-            ?assertEqual(ok, erlqueue:queue(test, ola)),
-            ?assertEqual({ok, ola}, erlqueue:dequeue(test)),
-            ?assertEqual(ok, erlqueue:delete(test))
+            ?assertEqual(ok, erlqueue:queue(test, hello)),
+            ?assertEqual({ok, hello}, erlqueue:dequeue(test))
+        end},
+       {<<"Empty Dequeue works">>,
+        fun() ->
+            ?assertEqual({ok, test}, erlqueue:new(test, 1024)),
+            ?assertEqual(not_found, erlqueue:dequeue(test))
+        end},
+       {<<"Full queue works">>,
+        fun() ->
+            ?assertEqual({ok, test},  erlqueue:new(test, 64)),
+            ?assertEqual(ok, erlqueue:queue(test, hellohello)),
+            ?assertEqual(ok, erlqueue:queue(test, hellohello)),
+            ?assertEqual(queue_is_full, erlqueue:queue(test, hellohello))
         end},
        {<<"Circular buffer works">>,
         fun() ->
-            ?assertEqual({ok, test}, erlqueue:new(test, 1024)),
-            lists:foreach(fun(N) ->
-                            ?assertEqual(ok, erlqueue:queue(test, N))
-                          end, lists:seq(0, 400)),
-            ?assertEqual(ok, erlqueue:delete(test))
+            ?assertEqual({ok, test}, erlqueue:new(test, 1024 * 2)),
+            N = 50,
+            lists:foreach(fun(I) ->
+                            ?assertEqual(ok, erlqueue:queue(test, I))
+                          end, lists:seq(0, N)),
+            lists:foreach(fun(I) ->
+                            ?assertEqual({ok, I}, erlqueue:dequeue(test))
+                          end, lists:seq(0, N))
         end},
        {<<"Roll around the buffer shouldn't crash">>,
         fun() ->
             ?assertEqual({ok, test}, erlqueue:new(test, 64)),
             ?assertEqual(ok, erlqueue:queue(test, a1)),
             ?assertEqual(ok, erlqueue:queue(test, a12)),
-            ?assertEqual(ok, erlqueue:queue(test, a123)),
             ?assertEqual({ok, a1}, erlqueue:dequeue(test)),
             ?assertEqual({ok, a12}, erlqueue:dequeue(test)),
-            ?assertEqual({ok, a123}, erlqueue:dequeue(test)),
+            ?assertEqual(not_found, erlqueue:dequeue(test)),
             ?assertEqual(ok, erlqueue:queue(test, a1234)),
             ?assertEqual({ok, a1234}, erlqueue:dequeue(test)),
             ?assertEqual(ok, erlqueue:queue(test, a12345)),
             ?assertEqual({ok, a12345}, erlqueue:dequeue(test)),
-            ?assertEqual(ok, erlqueue:delete(test))
+            ?assertEqual(not_found, erlqueue:dequeue(test))
         end},
-       {<<"Big bang">>,
+       {<<"Proper order">>,
         fun() ->
-            ?assertEqual({ok, test}, erlqueue:new(test, 1024)),
-            big:bang(100),
-            ?assertEqual(ok, erlqueue:delete(test))
+          ?assertEqual({ok, test}, erlqueue:new(test, 1024 * 2)),
+          L = lists:seq(0, 50),
+          lists:foreach(fun(N) ->
+                          ?assertEqual(ok, erlqueue:queue(test, N))
+                        end, L),
+          Output = lists:map(fun(_) ->
+                              N = case erlqueue:dequeue(test) of
+                                    {ok, N0} -> N0;
+                                    not_found -> undefined
+                                  end,
+                              N
+                             end, L),
+          ?assertEqual(L, Output)
+        end},
+       {<<"Tricky queue full detection">>,
+        fun() ->
+            ?assertEqual({ok, test}, erlqueue:new(test, 64)),
+            ?assertEqual(ok, erlqueue:queue(test, a1)),
+            ?assertEqual(ok, erlqueue:queue(test, a1)),
+            ?assertEqual(ok, erlqueue:queue(test, a1)),
+            ?assertEqual(queue_is_full, erlqueue:queue(test, a2222222222222)),
+            ?assertEqual({ok, a1}, erlqueue:dequeue(test)),
+            ?assertEqual({ok, a1}, erlqueue:dequeue(test)),
+            ?assertEqual({ok, a1}, erlqueue:dequeue(test)),
+            ?assertEqual(not_found, erlqueue:dequeue(test))
         end}
        ]
     }.
 
+load_test_() ->
+    {setup,
+     fun setup/0,
+     fun teardown/1,
+     fun(_SetupData) ->
+        {timeout, 90,
+          [fun() ->
+            {ok, test} = erlqueue:new(test, 4096 * 1024 - 128),
+            ?assertEqual(ok, big:bang(100000, 10, 60))
+           end]}
+      end
+    }.
+
 setup() -> ok.
 
-teardown(_) -> ok.
+teardown(_) ->
+  ?assertEqual(ok, erlqueue:delete(test)),
+  ok.

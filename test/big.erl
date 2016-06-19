@@ -1,69 +1,46 @@
-%%%-------------------------------------------------------------------
-%%% File    : big.erl
-%%% Author  : Rickard Green <>
-%%% Description : A simple message passing benchmark
-%%%
-%%% Created : 30 Dec 2005 by Rickard Green <>
-%%%-------------------------------------------------------------------
+%% -------------------------------------------------------------------
+%%
+%% Copyright (c) 2016 Luis Rascão.  All Rights Reserved.
+%%
+%% This file is provided to you under the Apache License,
+%% Version 2.0 (the "License"); you may not use this file
+%% except in compliance with the License.  You may obtain
+%% a copy of the License at
+%%
+%%   http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing,
+%% software distributed under the License is distributed on an
+%% "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+%% KIND, either express or implied.  See the License for the
+%% specific language governing permissions and limitations
+%% under the License.
+%%
+%% -------------------------------------------------------------------
 -module(big).
 
--export([bang/1]).
+-export([bang/3]).
 
-pinger([], [], true) ->
-    receive
-        {procs, Procs, ReportTo} ->
-            pinger(Procs, [], ReportTo)
-    end;
-pinger([], [], false) ->
-    receive {ping, From} -> From ! {pong, self()} end,
-    pinger([],[],false);
-pinger([], [], ReportTo) ->
-    ReportTo ! {done, self()},
-    pinger([],[],false);
-pinger([],[Po|Pos] = Pongers, ReportTo) ->
-    receive
-        {ping, From} ->
-            From ! {pong, self()},
-            pinger([], Pongers, ReportTo);
-        {pong, Po} ->
-            pinger([], Pos, ReportTo)
-    end;
-pinger([Pi|Pis], Pongers, ReportTo) ->
-    receive
-        {ping, From} -> From ! {pong, self()}
-    after 0 -> ok
-    end,
-    Pi ! {ping, self()},
-    pinger(Pis, [Pi|Pongers], ReportTo).
+launch(N0) ->
+    spawn(fun() ->
+        lists:foreach(fun(N) ->
+                        spawn(fun() ->
+                            _ = erlqueue:queue(test, base64:encode(crypto:strong_rand_bytes(N)))
+                        end)
+                      end,
+                      [crypto:rand_uniform(0, 200) || _X <- lists:seq(0, N0)]) end),
+    spawn(fun() ->
+        lists:foreach(fun(_) ->
+                        spawn(fun() ->
+                            _ = erlqueue:dequeue(test)
+                        end)
+                      end,
+                      [crypto:rand_uniform(0, 200) || _X <- lists:seq(0, N0)])
+    end).
 
-spawn_procs(N) when N =:= 0 ->
-    [];
-spawn_procs(N) ->
-    [spawn_link(fun () -> pinger([],[],true) end) | spawn_procs(N - 1)].
-
-send_procs([], Msg) ->
-    Msg;
-send_procs([P|Ps], Msg) ->
-    P ! Msg,
-    send_procs(Ps, Msg).
-
-receive_msgs([]) ->
-    ok;
-receive_msgs([M|Ms]) ->
-    receive
-        M ->
-            receive_msgs(Ms)
-    end.
-
-bang(N) when is_integer(N) ->
-    Procs = spawn_procs(N),
-    RMsgs = lists:map(fun (P) ->
-                        {done, P}
-                      end, Procs),
-    Start = now(),
-    send_procs(Procs, {procs, Procs, self()}),
-    receive_msgs(RMsgs),
-    Stop = now(),
-
-    lists:foreach(fun (P) -> exit(P, normal) end, Procs),
-    timer:now_diff(Stop, Start).
+bang(N, T, SecondsSleep) ->
+    lists:foreach(fun(_) ->
+                    launch(N)
+                  end, lists:seq(1, T)),
+    timer:sleep(SecondsSleep * 1000),
+    ok.
