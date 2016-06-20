@@ -31,6 +31,9 @@
 #include <stddef.h>
 
 typedef struct {
+#ifdef LSTATS
+    lstats_t stats;
+#endif
     char name[64];
     _Atomic unsigned int head;
     _Atomic unsigned int tail;
@@ -69,5 +72,8 @@ lqueue_queue(lqueue_t *q, void *v, size_t size);
 
 int
 lqueue_dequeue(lqueue_t *q, void **v, size_t *size);
+
+lstats_t *
+lqueue_stats(lqueue_t *q);
 
 #endif

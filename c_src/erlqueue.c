@@ -24,6 +24,7 @@
 #include <unistd.h>
 
 #include "uthash.h"
+#include "lstats.h"
 #include "lqueue.h"
 
 #define MAX_QUEUE_NAME 64
@@ -46,7 +47,16 @@ lqueue_hashed *qs = NULL;
 
 /*********************************************************************/
 
-static ERL_NIF_TERM nif_new(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+static ERL_NIF_TERM
+erl_mk_atom_prop_value(ErlNifEnv* env, const char *atom, ERL_NIF_TERM value) {
+    ERL_NIF_TERM key = enif_make_atom(env, atom);
+    return enif_make_tuple(env, 2, key, value);
+}
+
+/*********************************************************************/
+
+static ERL_NIF_TERM
+nif_new(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     if (argc != 2 || !enif_is_atom(env, argv[0]) ||
         !enif_is_number(env, argv[1])) {
@@ -75,7 +85,8 @@ static ERL_NIF_TERM nif_new(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return enif_make_tuple2(env, ATOM_OK, argv[0]);
 }
 
-static ERL_NIF_TERM nif_delete(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+static ERL_NIF_TERM
+nif_delete(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     if (argc != 1 || !enif_is_atom(env, argv[0])) {
       return enif_make_badarg(env);
@@ -96,7 +107,8 @@ static ERL_NIF_TERM nif_delete(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv
     return ATOM_OK;
 }
 
-static ERL_NIF_TERM nif_get(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+static ERL_NIF_TERM
+nif_get(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     if (argc != 1 || !enif_is_atom(env, argv[0])) {
       return enif_make_badarg(env);
@@ -122,7 +134,8 @@ static ERL_NIF_TERM nif_get(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return enif_make_tuple2(env, ATOM_OK, argv[0]);
 }
 
-static ERL_NIF_TERM nif_queue(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+static ERL_NIF_TERM
+nif_queue(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     ErlNifBinary bin;
     if (argc != 2 || !enif_is_atom(env, argv[0]) ||
@@ -142,7 +155,8 @@ static ERL_NIF_TERM nif_queue(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[
     return ATOM_OK;
 }
 
-static ERL_NIF_TERM nif_dequeue(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+static ERL_NIF_TERM
+nif_dequeue(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     if (argc != 1 || !enif_is_atom(env, argv[0])) {
       return enif_make_badarg(env);
@@ -164,6 +178,49 @@ static ERL_NIF_TERM nif_dequeue(ErlNifEnv* env, int argc, const ERL_NIF_TERM arg
     enif_alloc_binary(size, &bin);
     memcpy(bin.data, v, size);
     return enif_make_binary(env, &bin);
+}
+
+static ERL_NIF_TERM
+nif_stats(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+   if (argc != 1 || !enif_is_atom(env, argv[0])) {
+      return enif_make_badarg(env);
+    }
+    char name[MAX_QUEUE_NAME];
+    enif_get_atom(env, argv[0], name, MAX_QUEUE_NAME, ERL_NIF_LATIN1);
+
+    lqueue_hashed *q_hashed = NULL;
+    HASH_FIND_STR(qs, name, q_hashed);
+    if (q_hashed == NULL)
+      return enif_make_tuple2(env, ATOM_ERROR, ATOM_NO_QUEUE);
+
+    lstats_t *stats = lqueue_stats(q_hashed->q);
+    if (stats == NULL)
+      return ATOM_NOT_FOUND;
+
+    // convert the lstats_t struct to a proplist
+    ERL_NIF_TERM prop_value0 = erl_mk_atom_prop_value(env, "queues",
+                                                      enif_make_int(env, stats->n_queues));
+    ERL_NIF_TERM prop_value1 = erl_mk_atom_prop_value(env, "dequeues",
+                                                      enif_make_int(env, stats->n_dequeues));
+    ERL_NIF_TERM prop_value2 = erl_mk_atom_prop_value(env, "overflows",
+                                                      enif_make_int(env, stats->n_overflows));
+    ERL_NIF_TERM prop_value3 = erl_mk_atom_prop_value(env, "queue_tries",
+                                                      enif_make_int(env, stats->n_queue_tries));
+    ERL_NIF_TERM prop_value4 = erl_mk_atom_prop_value(env, "dequeue_tries",
+                                                      enif_make_int(env, stats->n_dequeue_tries));
+    ERL_NIF_TERM prop_value5 = erl_mk_atom_prop_value(env, "queue_time",
+                                                      enif_make_int(env, stats->queue_time_micros));
+    ERL_NIF_TERM prop_value6 = erl_mk_atom_prop_value(env, "dequeue_time",
+                                                      enif_make_int(env, stats->dequeue_time_micros));
+    ERL_NIF_TERM prop_value7 = erl_mk_atom_prop_value(env, "max_queue_time",
+                                                      enif_make_int(env, stats->max_queue_time_micros));
+    ERL_NIF_TERM prop_value8 = erl_mk_atom_prop_value(env, "max_dequeue_time",
+                                                      enif_make_int(env, stats->max_dequeue_time_micros));
+
+    return enif_make_list(env, N_STATS, prop_value0, prop_value1, prop_value2, prop_value3,
+                                        prop_value4, prop_value5, prop_value6, prop_value7,
+                                        prop_value8);
 }
 
 /*********************************************************************/
@@ -203,7 +260,8 @@ static ErlNifFunc nif_funcs[] = {
   {"nif_delete", 1, nif_delete},
   {"nif_get", 1, nif_get},
   {"nif_queue", 2, nif_queue},
-  {"nif_dequeue", 1, nif_dequeue}
+  {"nif_dequeue", 1, nif_dequeue},
+  {"nif_stats", 1, nif_stats}
 };
 
 ERL_NIF_INIT(erlqueue, nif_funcs, &on_load, NULL, &on_upgrade, &on_unload)

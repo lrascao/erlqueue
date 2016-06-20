@@ -29,13 +29,16 @@ launch(N0) ->
                         end)
                       end,
                       [crypto:rand_uniform(0, 200) || _X <- lists:seq(0, N0)]) end),
+    %% allow for the queue processes to start working
+    timer:sleep(1000),
+    %% then start the dequeueing processes
     spawn(fun() ->
         lists:foreach(fun(_) ->
                         spawn(fun() ->
                             _ = erlqueue:dequeue(test)
                         end)
                       end,
-                      [crypto:rand_uniform(0, 200) || _X <- lists:seq(0, N0)])
+                      lists:seq(0, N0))
     end).
 
 bang(N, T, SecondsSleep) ->

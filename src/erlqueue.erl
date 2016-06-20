@@ -25,7 +25,8 @@
          delete/1,
          get/1,
          queue/2,
-         dequeue/1]).
+         dequeue/1,
+         stats/1]).
 
 -type new_opts() :: proplists:proplist().
 -export_type([new_opts/0]).
@@ -57,6 +58,14 @@ dequeue(Name) ->
         T -> {ok, binary_to_term(T)}
     end.
 
+-spec stats(Name :: atom()) -> not_found | {ok, proplists:proplist()}.
+stats(Name) ->
+    case nif_stats(Name) of
+        not_found -> not_found;
+        {error, _} = Error -> Error;
+        T -> {ok, T}
+    end.
+
 nif_new(_, _) ->
     erlang:nif_error({error, not_loaded}).
 
@@ -70,6 +79,9 @@ nif_queue(_, _) ->
     erlang:nif_error({error, not_loaded}).
 
 nif_dequeue(_) ->
+    erlang:nif_error({error, not_loaded}).
+
+nif_stats(_) ->
     erlang:nif_error({error, not_loaded}).
 
 init() ->

@@ -115,8 +115,13 @@ load_test_() ->
      fun(_SetupData) ->
         {timeout, 90,
           [fun() ->
-            {ok, test} = erlqueue:new(test, [{size, 4096 * 1024 - 128}]),
-            ?assertEqual(ok, big:bang(100000, 10, 60))
+            {ok, test} = erlqueue:new(test, [{size, 4096 * 1024 - 1024}]),
+            ?assertEqual(ok, big:bang(10000, 10, 30)),
+            case erlqueue:stats(test) of
+              {ok, Stats} ->
+                ?debugFmt("~p\n", [Stats]);
+              _ -> ok
+            end
            end]}
       end
     }.

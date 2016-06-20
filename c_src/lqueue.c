@@ -23,6 +23,7 @@
 #include <stdatomic.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include "lstats.h"
 #include "lqueue.h"
 
 #define SHMEM_PREFIX "/tmp/lqueue.shm."
@@ -47,6 +48,9 @@ lqueue_create(char *name, size_t size)
     q->tail = ATOMIC_VAR_INIT(0);
     q->size = size;
     strcpy(q->name, name);
+#ifdef LSTATS
+    lstats_init(&q->stats);
+#endif
     return q;
 }
 
@@ -84,7 +88,10 @@ lqueue_queue(lqueue_t *q, void *v, size_t size)
     unsigned int tail = atomic_load(&q->tail);
     unsigned int next_tail;
     unsigned short overflow;
+
+    STAT_TIME();
     do {
+        STAT_SCORE(STAT_QUEUE_TRY, &q->stats);
         overflow = 0;
         next_tail = tail + sizeof(header_t) + size;
         // if this write plus an extra header would exceed the buffer limits
@@ -96,7 +103,9 @@ lqueue_queue(lqueue_t *q, void *v, size_t size)
             overflow = 1;
         }
     } while (!atomic_compare_exchange_weak(&q->tail, &tail, next_tail));
+
     if (overflow) {
+        STAT_SCORE(STAT_OVERFLOW, &q->stats);
         header_t *header = (header_t *) (q->buffer + tail);
         // we have the assurance that there's always room for an header
         // so insert a special one with a size of the total queue size
@@ -127,6 +136,10 @@ lqueue_queue(lqueue_t *q, void *v, size_t size)
         // a concurrent dequeue won't get us mid-copy
         atomic_store(&header->marker, SET_UNREAD(VALID_MASK));
     }
+
+    STAT_VALUE_SCORE(STAT_MAX_QUEUE_TIME_MICROS, STAT_TIME_DIFF(), &q->stats);
+    STAT_VALUE_SCORE(STAT_QUEUE_TIME_MICROS, STAT_TIME_DIFF(), &q->stats);
+    STAT_SCORE(STAT_QUEUE, &q->stats);
     return 0;
 }
 
@@ -139,7 +152,10 @@ lqueue_dequeue(lqueue_t *q, void **v, size_t *size)
     unsigned short overflow;
     header_t *header = NULL;
     marker_t marker = 0;
+
+    STAT_TIME();
     do {
+        STAT_SCORE(STAT_DEQUEUE_TRY, &q->stats);
         overflow = 0;
         header = (header_t *) (q->buffer + head);
         // load the marker atomically for the same
@@ -162,7 +178,9 @@ lqueue_dequeue(lqueue_t *q, void **v, size_t *size)
             overflow = 1;
         }
     } while (!atomic_compare_exchange_weak(&q->head, &head, next_head));
+
     if (overflow) {
+        STAT_SCORE(STAT_OVERFLOW, &q->stats);
         // we've reached the end of the queue
         // so just mark this block as read and try again
         atomic_store(&header->marker, SET_READ(VALID_MASK));
@@ -175,5 +193,18 @@ lqueue_dequeue(lqueue_t *q, void **v, size_t *size)
         // set the header as read
         atomic_store(&header->marker, SET_READ(marker));
     }
+
+    STAT_VALUE_SCORE(STAT_MAX_DEQUEUE_TIME_MICROS, STAT_TIME_DIFF(), &q->stats);
+    STAT_VALUE_SCORE(STAT_DEQUEUE_TIME_MICROS, STAT_TIME_DIFF(), &q->stats);
+    STAT_SCORE(STAT_DEQUEUE, &q->stats);
     return 0;
+}
+
+lstats_t *
+lqueue_stats(lqueue_t *q)
+{
+#ifdef LSTATS
+    return &q->stats;
+#endif
+    return NULL;
 }

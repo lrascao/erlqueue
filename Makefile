@@ -40,10 +40,13 @@ deps:
 compile:
 	- $(REBAR) skip_deps=true compile
 
+debug:
+	- DEBUG=true LSTATS=true $(REBAR) skip_deps=true compile
+
 clean:
 	- $(REBAR) clean
 
-test:
+test: debug
 	- $(REBAR) eunit
 
 distclean: clean

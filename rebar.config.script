@@ -1,0 +1,28 @@
+% vim: set ft=erlang expandtab softtabstop=4 shiftwidth=4:
+%% define a -Ddebug macro if a debug build was requested
+CONFIG1 = case os:getenv("DEBUG") of
+            "true" ->
+                % get the current erl_opts and add the debug define
+                NewErlOpts = proplists:get_value(erl_opts, CONFIG) ++ [{d, debug}],
+                % now replace the new erl opts in the current rebar configuration
+                CONFIG0 = lists:keyreplace(erl_opts, 1, CONFIG, {erl_opts, NewErlOpts}),
+                % also get the current port spec opts
+                [{Pattern0, Target0, Sources0, PortSpecOpts0}] =
+                    proplists:get_value(port_specs, CONFIG),
+                [{"CFLAGS", Cflags0}] = proplists:get_value(env, PortSpecOpts0),
+                NewPortSpecOpts0 = [{env, [{"CFLAGS", Cflags0 ++ " -DDEBUG"}]}],
+                NewPortSpecs0 = [{Pattern0, Target0, Sources0, NewPortSpecOpts0}],
+                lists:keyreplace(port_specs, 1, CONFIG0, {port_specs, NewPortSpecs0});
+            _ -> CONFIG % env var not defined or anything other than true
+          end,
+case os:getenv("LSTATS") of
+    "true" ->
+        % % also get the current port spec opts
+        [{Pattern1, Target1, Sources1, PortSpecOpts1}] =
+            proplists:get_value(port_specs, CONFIG1),
+        [{"CFLAGS", Cflags1}] = proplists:get_value(env, PortSpecOpts1),
+        NewPortSpecOpts1 = [{env, [{"CFLAGS", Cflags1 ++ " -DLSTATS"}]}],
+        NewPortSpecs1 = [{Pattern1, Target1, Sources1, NewPortSpecOpts1}],
+        lists:keyreplace(port_specs, 1, CONFIG1, {port_specs, NewPortSpecs1});
+    _ -> CONFIG1 % env var not defined or anything other than true
+end.
