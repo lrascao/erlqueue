@@ -104,3 +104,6 @@ distclean: clean
 	- $(REBAR) clean
 
 rebuild: distclean compile dialyze
+
+shell: deps compile
+	erl -pa ebin -s erlqueue_app
