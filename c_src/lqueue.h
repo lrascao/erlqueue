@@ -36,7 +36,7 @@ typedef struct {
     _Atomic unsigned int tail;
     size_t size;
     char buffer[];
-} lqueue;
+} lqueue_t;
 
 typedef unsigned short marker_t;
 
@@ -55,19 +55,19 @@ typedef struct {
 #define SET_UNREAD(marker) (marker | UNREAD_MASK)
 #define SET_READ(marker) (marker & ~UNREAD_MASK)
 
-lqueue *
+lqueue_t *
 lqueue_connect(char *name);
 
-lqueue *
+lqueue_t *
 lqueue_create(char *name, size_t size);
 
 void
-lqueue_free(lqueue *);
+lqueue_free(lqueue_t *);
 
 int
-lqueue_queue(lqueue *q, void *v, size_t size);
+lqueue_queue(lqueue_t *q, void *v, size_t size);
 
 int
-lqueue_dequeue(lqueue *q, void **v, size_t *size);
+lqueue_dequeue(lqueue_t *q, void **v, size_t *size);
 
 #endif

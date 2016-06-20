@@ -27,7 +27,7 @@
 
 #define SHMEM_PREFIX "/tmp/lqueue.shm."
 
-lqueue *
+lqueue_t *
 lqueue_create(char *name, size_t size)
 {
     char filename[256];
@@ -36,10 +36,10 @@ lqueue_create(char *name, size_t size)
     FILE *fp = fopen(filename, "ab+");
     fclose(fp);
     // add the lqueue struct overhead to the requested size
-    int shmid = shmget(ftok(filename, 1), size + sizeof(lqueue), IPC_CREAT | 0666);
+    int shmid = shmget(ftok(filename, 1), size + sizeof(lqueue_t), IPC_CREAT | 0666);
     if (shmid == -1)
         return NULL;
-    lqueue *q = shmat(shmid, NULL, 0);
+    lqueue_t *q = shmat(shmid, NULL, 0);
     if (q == (void *) -1)
         return NULL;
 
@@ -50,7 +50,7 @@ lqueue_create(char *name, size_t size)
     return q;
 }
 
-lqueue *
+lqueue_t *
 lqueue_connect(char *name)
 {
     char filename[256];
@@ -59,7 +59,7 @@ lqueue_connect(char *name)
     int shmid = shmget(ftok(filename, 1), 0, 0);
     if (shmid == -1)
         return NULL;
-    lqueue *q = shmat(shmid, NULL, 0);
+    lqueue_t *q = shmat(shmid, NULL, 0);
     if (q == (void *) -1)
         return NULL;
     strcpy(q->name, name);
@@ -67,7 +67,7 @@ lqueue_connect(char *name)
 }
 
 void
-lqueue_free(lqueue *q)
+lqueue_free(lqueue_t *q)
 {
     char filename[256];
     strcpy(filename, SHMEM_PREFIX);
@@ -79,7 +79,7 @@ lqueue_free(lqueue *q)
 }
 
 int
-lqueue_queue(lqueue *q, void *v, size_t size)
+lqueue_queue(lqueue_t *q, void *v, size_t size)
 {
     unsigned int tail = atomic_load(&q->tail);
     unsigned int next_tail;
@@ -131,7 +131,7 @@ lqueue_queue(lqueue *q, void *v, size_t size)
 }
 
 int
-lqueue_dequeue(lqueue *q, void **v, size_t *size)
+lqueue_dequeue(lqueue_t *q, void **v, size_t *size)
 {
     unsigned int head = atomic_load(&q->head);
     unsigned int tail = atomic_load(&q->tail);

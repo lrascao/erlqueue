@@ -38,7 +38,7 @@ static ERL_NIF_TERM ATOM_QUEUE_FULL;
 
 typedef struct {
   char name[64];
-  lqueue *q;
+  lqueue_t *q;
   UT_hash_handle hh; /* makes this structure hashable */
 } lqueue_hashed;
 
@@ -63,7 +63,7 @@ static ERL_NIF_TERM nif_new(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     if (q_hashed != NULL)
       return enif_make_tuple2(env, ATOM_ERROR, ATOM_ALREADY_EXISTS);
 
-    lqueue *q = lqueue_create(name, size);
+    lqueue_t *q = lqueue_create(name, size);
     if (q == NULL)
       return enif_make_tuple2(env, ATOM_ERROR, ATOM_SHMEM_CREATION_FAILED);
 
@@ -110,7 +110,7 @@ static ERL_NIF_TERM nif_get(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     if (q_hashed != NULL)
       return enif_make_tuple2(env, ATOM_OK, argv[0]);
 
-    lqueue *q = lqueue_connect(name);
+    lqueue_t *q = lqueue_connect(name);
     if (q == NULL)
       return enif_make_tuple2(env, ATOM_ERROR, ATOM_NO_QUEUE);
 
