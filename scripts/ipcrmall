@@ -1,0 +1,7 @@
+#!/bin/bash
+
+IPCS_M=`ipcs -m | grep --extended-regexp "m [0-9]+ 0x[0-9a-f]+" | cut -f2 -d" "`
+
+for id in $IPCS_M; do
+  ipcrm -m $id;
+done
