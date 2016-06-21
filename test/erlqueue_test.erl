@@ -104,6 +104,14 @@ basic_test_() ->
             ?assertEqual({ok, a1}, erlqueue:dequeue(test)),
             ?assertEqual({ok, a1}, erlqueue:dequeue(test)),
             ?assertEqual(not_found, erlqueue:dequeue(test))
+        end},
+       {<<"Exceeding the total queue size doesn't crash">>,
+        fun() ->
+            ?assertEqual({ok, test}, erlqueue:new(test, [{size, 64}])),
+            ?assertEqual(ok, erlqueue:queue(test, an_atom)),
+            ?assertEqual(ok, erlqueue:queue(test, <<"a binary">>)),
+            ?assertEqual(queue_is_full, erlqueue:queue(test, [{a, proplist},
+                                                              {containing, <<"binaries">>}]))
         end}
        ]
     }.

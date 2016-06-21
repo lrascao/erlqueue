@@ -37,7 +37,10 @@ lqueue_create(char *name, size_t size)
     FILE *fp = fopen(filename, "ab+");
     fclose(fp);
     // add the lqueue struct overhead to the requested size
-    int shmid = shmget(ftok(filename, 1), size + sizeof(lqueue_t), IPC_CREAT | 0666);
+    // also add up a header's length, look for the next comment
+    // below for the reason why
+    int shmid = shmget(ftok(filename, 1),
+                       size + sizeof(lqueue_t) + sizeof(header_t), IPC_CREAT | 0666);
     if (shmid == -1)
         return NULL;
     lqueue_t *q = shmat(shmid, NULL, 0);
@@ -46,7 +49,10 @@ lqueue_create(char *name, size_t size)
 
     q->head = ATOMIC_VAR_INIT(0);
     q->tail = ATOMIC_VAR_INIT(0);
-    q->size = size;
+    // add a header length to the requested size so account for the empty
+    // header that must be introduced at the end of the buffer
+    // to signal dequeue that it must circle back to the beginning
+    q->size = size + sizeof(header_t);
     strcpy(q->name, name);
 #ifdef LSTATS
     lstats_init(&q->stats);
