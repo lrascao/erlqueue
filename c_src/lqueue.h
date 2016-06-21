@@ -73,6 +73,9 @@ lqueue_queue(lqueue_t *q, void *v, size_t size);
 int
 lqueue_dequeue(lqueue_t *q, void **v, size_t *size);
 
+size_t
+lqueue_byte_size(size_t size);
+
 lstats_t *
 lqueue_stats(lqueue_t *q);
 

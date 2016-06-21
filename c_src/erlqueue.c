@@ -36,6 +36,7 @@ static ERL_NIF_TERM ATOM_ALREADY_EXISTS;
 static ERL_NIF_TERM ATOM_SHMEM_CREATION_FAILED;
 static ERL_NIF_TERM ATOM_NO_QUEUE;
 static ERL_NIF_TERM ATOM_QUEUE_FULL;
+static ERL_NIF_TERM ATOM_INVALID;
 
 typedef struct {
   char name[64];
@@ -181,6 +182,23 @@ nif_dequeue(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 }
 
 static ERL_NIF_TERM
+nif_byte_size(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    ErlNifBinary bin;
+    if (argc != 1 || !enif_inspect_binary(env, argv[0], &bin)) {
+      return enif_make_badarg(env);
+    }
+
+    // get the actual byte size that this term takes up in the lqueue
+    size_t byte_size = lqueue_byte_size(bin.size);
+    if (byte_size == -1)
+      return enif_make_tuple2(env, ATOM_ERROR, ATOM_INVALID);
+
+    ERL_NIF_TERM byte_size_term = enif_make_int(env, byte_size);
+    return enif_make_tuple(env, 2, ATOM_OK, byte_size_term);
+}
+
+static ERL_NIF_TERM
 nif_stats(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
    if (argc != 1 || !enif_is_atom(env, argv[0])) {
@@ -234,6 +252,7 @@ static void init(ErlNifEnv *env)
   ATOM_SHMEM_CREATION_FAILED = enif_make_atom(env, "shmem_creation_failed");
   ATOM_NO_QUEUE = enif_make_atom(env, "no_queue");
   ATOM_QUEUE_FULL = enif_make_atom(env, "queue_is_full");
+  ATOM_INVALID = enif_make_atom(env, "invalid");
 }
 
 static int on_load(ErlNifEnv* env, void** priv_data, ERL_NIF_TERM load_info)
@@ -261,6 +280,7 @@ static ErlNifFunc nif_funcs[] = {
   {"nif_get", 1, nif_get},
   {"nif_queue", 2, nif_queue},
   {"nif_dequeue", 1, nif_dequeue},
+  {"nif_byte_size", 1, nif_byte_size},
   {"nif_stats", 1, nif_stats}
 };
 

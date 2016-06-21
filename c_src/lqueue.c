@@ -200,6 +200,13 @@ lqueue_dequeue(lqueue_t *q, void **v, size_t *size)
     return 0;
 }
 
+size_t
+lqueue_byte_size(size_t size)
+{
+    // the actual space that will be taken up on the queue is
+    return sizeof(header_t) + size;
+}
+
 lstats_t *
 lqueue_stats(lqueue_t *q)
 {

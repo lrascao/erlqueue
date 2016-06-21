@@ -26,6 +26,7 @@
          get/1,
          queue/2,
          dequeue/1,
+         byte_size/1,
          stats/1]).
 
 -type new_opts() :: proplists:proplist().
@@ -58,6 +59,10 @@ dequeue(Name) ->
         T -> {ok, binary_to_term(T)}
     end.
 
+-spec byte_size(Term :: term()) -> {ok, non_neg_integer()} | {error, invalid}.
+byte_size(Term) ->
+    nif_byte_size(term_to_binary(Term)).
+
 -spec stats(Name :: atom()) -> not_found | {ok, proplists:proplist()}.
 stats(Name) ->
     case nif_stats(Name) of
@@ -79,6 +84,9 @@ nif_queue(_, _) ->
     erlang:nif_error({error, not_loaded}).
 
 nif_dequeue(_) ->
+    erlang:nif_error({error, not_loaded}).
+
+nif_byte_size(_) ->
     erlang:nif_error({error, not_loaded}).
 
 nif_stats(_) ->
