@@ -38,7 +38,11 @@ basic_test_() ->
         fun() ->
             ?assertEqual({ok, test}, erlqueue:new(test, [{size, 1024}])),
             ?assertEqual(ok, erlqueue:queue(test, hello)),
-            ?assertEqual({ok, hello}, erlqueue:dequeue(test))
+            ?assertEqual({ok, hello}, erlqueue:dequeue(test)),
+            ?assertEqual(ok, erlqueue:queue(test, <<"hello">>)),
+            ?assertEqual({ok, <<"hello">>}, erlqueue:dequeue(test)),
+            ?assertEqual(ok, erlqueue:queue(test, <<"b/hello">>)),
+            ?assertEqual({ok, <<"b/hello">>}, erlqueue:dequeue(test))
         end},
        {<<"Empty Dequeue works">>,
         fun() ->

@@ -31,6 +31,8 @@
          info/1,
          inspect/2]).
 
+-define(BINARY_MARKER, "/b").
+
 -type new_opts() :: proplists:proplist().
 -export_type([new_opts/0]).
 
@@ -50,6 +52,8 @@ get(Name) ->
     nif_get(Name).
 
 -spec queue(Name :: atom(), Term :: term()) -> {error, no_queue} | ok.
+queue(Name, Bin) when is_binary(Bin) ->
+    nif_queue(Name, << ?BINARY_MARKER, Bin/binary>>);
 queue(Name, Term) ->
     nif_queue(Name, term_to_binary(Term)).
 
@@ -58,6 +62,8 @@ dequeue(Name) ->
     case nif_dequeue(Name) of
         not_found -> not_found;
         {error, _} = Error -> Error;
+        << ?BINARY_MARKER, Bin/binary>> ->
+            {ok, Bin};
         T -> {ok, binary_to_term(T)}
     end.
 
