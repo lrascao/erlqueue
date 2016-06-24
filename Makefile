@@ -25,7 +25,7 @@ $(error "Rebar not available on this system")
 endif
 
 .PHONY: all compile clean dialyze typer distclean \
-  deps rebuild test help
+  deps rebuild test help bench
 
 all: deps compile
 
@@ -48,6 +48,18 @@ clean:
 
 test: debug
 	- $(REBAR) eunit
+
+bench:
+	git clone git://github.com/basho/basho_bench.git bench/basho_bench || true
+	rm -f bench/basho_bench/src/basho_bench_driver_erlqueue.erl
+	ln -s ../../basho_bench_driver_erlqueue.erl \
+		  bench/basho_bench/src/basho_bench_driver_erlqueue.erl
+	cd bench/basho_bench; make; cd ..
+	./scripts/ipcrmall
+	cd bench; \
+		basho_bench/basho_bench --results-dir basho_bench/tests \
+			basho_bench_erlqueue.config;
+	cd basho_bench; make results
 
 distclean: clean
 	- rm -rf .rebar

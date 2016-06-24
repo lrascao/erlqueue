@@ -72,11 +72,9 @@ basic_test_() ->
        {<<"Circular buffer works">>,
         fun() ->
             ?assertEqual({ok, test}, erlqueue:new(test, [{size, 1024 * 2}])),
-            N = 50,
+            N = 50000,
             lists:foreach(fun(I) ->
-                            ?assertEqual(ok, erlqueue:queue(test, I))
-                          end, lists:seq(0, N)),
-            lists:foreach(fun(I) ->
+                            ?assertEqual(ok, erlqueue:queue(test, I)),
                             ?assertEqual({ok, I}, erlqueue:dequeue(test))
                           end, lists:seq(0, N))
         end},
@@ -131,24 +129,6 @@ basic_test_() ->
                                                               {containing, <<"binaries">>}]))
         end}
        ]
-    }.
-
-load_test_() ->
-    {setup,
-     fun setup/0,
-     fun teardown/1,
-     fun(_SetupData) ->
-        {timeout, 90,
-          [fun() ->
-            {ok, test} = erlqueue:new(test, [{size, 4096 * 1024 - 1024}]),
-            ?assertEqual(ok, big:bang(10000, 10, 30)),
-            case erlqueue:stats(test) of
-              {ok, Stats} ->
-                ?debugFmt("~p\n", [Stats]);
-              _ -> ok
-            end
-           end]}
-      end
     }.
 
 setup() -> ok.
