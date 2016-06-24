@@ -47,12 +47,12 @@ typedef unsigned short marker_t;
 
 typedef struct {
     _Atomic marker_t marker;
-    unsigned int size;
+    _Atomic unsigned int size;
 } header_t;
 
-#define VALID_MASK 0x5ead
-#define IS_VALID(marker) ((marker & VALID_MASK) == VALID_MASK)
-#define SET_VALID(marker) (marker | VALID_MASK)
+#define VALID_MASK(position) (((marker_t)~position) >> 1)
+#define IS_VALID(marker, position) ((marker & VALID_MASK(position)) == VALID_MASK(position))
+#define SET_VALID(marker, position) (marker | VALID_MASK(position))
 
 #define UNREAD_MASK (1 << ((sizeof(marker_t) * 8) - 1))
 #define IS_UNREAD(marker) ((marker & UNREAD_MASK) == UNREAD_MASK)

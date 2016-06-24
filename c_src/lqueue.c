@@ -93,12 +93,12 @@ lqueue_queue(lqueue_t *q, void *v, size_t size)
 {
     unsigned int tail = atomic_load(&q->tail);
     unsigned int next_tail;
-    unsigned short overflow;
+    unsigned short wraparound;
 
     STAT_TIME();
     do {
         STAT_SCORE(STAT_QUEUE_TRY, &q->stats);
-        overflow = 0;
+        wraparound = 0;
         next_tail = tail + sizeof(header_t) + size;
         // if this write plus an extra header would exceed the buffer limits
         // then reset and start from the top
@@ -106,19 +106,19 @@ lqueue_queue(lqueue_t *q, void *v, size_t size)
         // to write a special end of queue header
         if ((next_tail + sizeof(header_t)) > q->size) {
             next_tail = 0;
-            overflow = 1;
+            wraparound = 1;
         }
     } while (!atomic_compare_exchange_weak(&q->tail, &tail, next_tail));
 
-    if (overflow) {
+    if (wraparound) {
         STAT_SCORE(STAT_OVERFLOW, &q->stats);
         header_t *header = (header_t *) (q->buffer + tail);
         // we have the assurance that there's always room for an header
         // so insert a special one with a size of the total queue size
         // dequeue will see this and know that it must circle back
         // to the beginning
-        header->size = q->size;
-        atomic_store(&header->marker, SET_UNREAD(VALID_MASK));
+        atomic_store(&header->size, q->size);
+        atomic_store(&header->marker, SET_UNREAD(VALID_MASK(tail)));
         // but still we have to deal with this queue request
         // so just try again
         return lqueue_queue(q, v, size);
@@ -129,7 +129,7 @@ lqueue_queue(lqueue_t *q, void *v, size_t size)
         // unconsumed data
         header_t *header = (header_t *) (q->buffer + tail);
         marker_t marker = atomic_load(&header->marker);
-        if (IS_UNREAD(marker) && IS_VALID(marker)) {
+        if (IS_VALID(marker, tail) && IS_UNREAD(marker)) {
             // restore the previous tail
             atomic_store(&q->tail, tail);
             return 1;
@@ -137,10 +137,10 @@ lqueue_queue(lqueue_t *q, void *v, size_t size)
         // copy the value onto the queue
         memcpy(q->buffer + tail + sizeof(header_t), v, size);
         // now set the header size and marker
-        header->size = size;
+        atomic_store(&header->size, size);
         // the marker must be stored atomically to make sure
         // a concurrent dequeue won't get us mid-copy
-        atomic_store(&header->marker, SET_UNREAD(VALID_MASK));
+        atomic_store(&header->marker, SET_UNREAD(VALID_MASK(tail)));
     }
 
     STAT_VALUE_SCORE(STAT_MAX_QUEUE_TIME_MICROS, STAT_TIME_DIFF(), &q->stats);
@@ -155,49 +155,52 @@ lqueue_dequeue(lqueue_t *q, void **v, size_t *size)
     unsigned int head = atomic_load(&q->head);
     unsigned int tail = atomic_load(&q->tail);
     unsigned int next_head = 0;
-    unsigned short overflow;
+    unsigned short wraparound;
     header_t *header = NULL;
     marker_t marker = 0;
+    unsigned int header_size;
 
     STAT_TIME();
     do {
         STAT_SCORE(STAT_DEQUEUE_TRY, &q->stats);
-        overflow = 0;
+        wraparound = 0;
         header = (header_t *) (q->buffer + head);
         // load the marker atomically for the same
         // we store it atomically in queue
         marker = atomic_load(&header->marker);
+        header_size = atomic_load(&header->size);
         // we're up against the end of the queue and there's
         // nothing more to read
         if (head == tail) {
-            // this is an invalid or unread block
-            if (!IS_VALID(marker) || IS_READ(marker))
+            // this is an invalid block or valid one that's already been read
+            if (!IS_VALID(marker, head) || IS_READ(marker))
                 return 1;
         }
         // only try to read blocks that are valid and unread
-        if (!IS_VALID(marker) || IS_READ(marker))
+        if (!IS_VALID(marker, head) || IS_READ(marker))
             return 1;
 
-        next_head = head + sizeof(header_t) + header->size;
+        next_head = head + sizeof(header_t) + header_size;
         if (next_head > q->size) {
             next_head = 0;
-            overflow = 1;
+            wraparound = 1;
         }
     } while (!atomic_compare_exchange_weak(&q->head, &head, next_head));
 
-    if (overflow) {
+    if (wraparound) {
         STAT_SCORE(STAT_OVERFLOW, &q->stats);
         // we've reached the end of the queue
         // so just mark this block as read and try again
-        atomic_store(&header->marker, SET_READ(VALID_MASK));
+        atomic_store(&header->marker, SET_READ(VALID_MASK(head)));
         return lqueue_dequeue(q, v, size);
     }
     else {
         // extract the queued value
-        *size = header->size;
+        *size = header_size;
         *v = q->buffer + head + sizeof(header_t);
-        // set the header as read
-        atomic_store(&header->marker, SET_READ(marker));
+        // reset the header
+        atomic_store(&header->size, 0);
+        atomic_store(&header->marker, 0);
     }
 
     STAT_VALUE_SCORE(STAT_MAX_DEQUEUE_TIME_MICROS, STAT_TIME_DIFF(), &q->stats);

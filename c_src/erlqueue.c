@@ -178,6 +178,12 @@ nif_dequeue(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     ErlNifBinary bin;
     enif_alloc_binary(size, &bin);
     memcpy(bin.data, v, size);
+    // scrub the data that we just read
+    // this is an important bit since it's thie srubbing
+    // that will prevent a future queue to end up somewhere
+    // along this buffer and mistakenly interpret random bytes
+    // as a valid header
+    memset(v, 0, size);
     return enif_make_binary(env, &bin);
 }
 
