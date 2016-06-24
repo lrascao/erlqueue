@@ -45,6 +45,14 @@ basic_test_() ->
             ?assertEqual({ok, test}, erlqueue:new(test, [{size, 1024}])),
             ?assertEqual(not_found, erlqueue:dequeue(test))
         end},
+       {<<"Info works">>,
+        fun() ->
+            ?assertEqual({ok, test}, erlqueue:new(test, [{size, 1024}])),
+            ?assertEqual({ok, [{name, "test"},
+                               {head, 0},
+                               {tail, 0},
+                               {size, 1024}]}, erlqueue:info(test))
+        end},
        {<<"Full queue works">>,
         fun() ->
             ?assertEqual({ok, test},  erlqueue:new(test, [{size, 64}])),

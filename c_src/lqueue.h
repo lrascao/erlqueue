@@ -30,6 +30,8 @@
 
 #include <stddef.h>
 
+#define N_INFO_FIELDS 4 // name, head, tail, size in lqueue_t
+
 typedef struct {
 #ifdef LSTATS
     lstats_t stats;

@@ -27,7 +27,8 @@
          queue/2,
          dequeue/1,
          byte_size/1,
-         stats/1]).
+         stats/1,
+         info/1]).
 
 -type new_opts() :: proplists:proplist().
 -export_type([new_opts/0]).
@@ -71,6 +72,14 @@ stats(Name) ->
         T -> {ok, T}
     end.
 
+-spec info(Name :: atom()) -> not_found | {ok, proplists:proplist()}.
+info(Name) ->
+    case nif_info(Name) of
+        not_found -> not_found;
+        {error, _} = Error -> Error;
+        T -> {ok, T}
+    end.
+
 nif_new(_, _) ->
     erlang:nif_error({error, not_loaded}).
 
@@ -90,6 +99,9 @@ nif_byte_size(_) ->
     erlang:nif_error({error, not_loaded}).
 
 nif_stats(_) ->
+    erlang:nif_error({error, not_loaded}).
+
+nif_info(_) ->
     erlang:nif_error({error, not_loaded}).
 
 init() ->

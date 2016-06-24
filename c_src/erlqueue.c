@@ -241,6 +241,37 @@ nif_stats(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
                                         prop_value8);
 }
 
+static ERL_NIF_TERM
+nif_info(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+   if (argc != 1 || !enif_is_atom(env, argv[0])) {
+      return enif_make_badarg(env);
+    }
+    char name[MAX_QUEUE_NAME];
+    enif_get_atom(env, argv[0], name, MAX_QUEUE_NAME, ERL_NIF_LATIN1);
+
+    lqueue_hashed *q_hashed = NULL;
+    HASH_FIND_STR(qs, name, q_hashed);
+    if (q_hashed == NULL)
+      return enif_make_tuple2(env, ATOM_ERROR, ATOM_NO_QUEUE);
+
+    lqueue_t *q = q_hashed->q;
+
+    // convert some fields of the lqueue_t struct to a proplist
+    ERL_NIF_TERM prop_value0 = erl_mk_atom_prop_value(env, "name",
+                                                      enif_make_string(env, q->name, ERL_NIF_LATIN1));
+    ERL_NIF_TERM prop_value1 = erl_mk_atom_prop_value(env, "head",
+                                                      enif_make_int(env, q->head));
+    ERL_NIF_TERM prop_value2 = erl_mk_atom_prop_value(env, "tail",
+                                                      enif_make_int(env, q->tail));
+    // deduct the header size that was added in lqueue_create to show consistency
+    // to the user
+    ERL_NIF_TERM prop_value3 = erl_mk_atom_prop_value(env, "size",
+                                                      enif_make_int(env, q->size - sizeof(header_t)));
+
+    return enif_make_list(env, N_INFO_FIELDS, prop_value0, prop_value1, prop_value2, prop_value3);
+}
+
 /*********************************************************************/
 
 static void init(ErlNifEnv *env)
@@ -281,7 +312,8 @@ static ErlNifFunc nif_funcs[] = {
   {"nif_queue", 2, nif_queue},
   {"nif_dequeue", 1, nif_dequeue},
   {"nif_byte_size", 1, nif_byte_size},
-  {"nif_stats", 1, nif_stats}
+  {"nif_stats", 1, nif_stats},
+  {"nif_info", 1, nif_info},
 };
 
 ERL_NIF_INIT(erlqueue, nif_funcs, &on_load, NULL, &on_upgrade, &on_unload)
