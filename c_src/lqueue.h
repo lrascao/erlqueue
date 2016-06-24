@@ -81,4 +81,7 @@ lqueue_byte_size(size_t size);
 lstats_t *
 lqueue_stats(lqueue_t *q);
 
+void
+lqueue_inspect(lqueue_t *q, unsigned int position, marker_t *marker);
+
 #endif

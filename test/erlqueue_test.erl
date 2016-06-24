@@ -53,6 +53,15 @@ basic_test_() ->
                                {tail, 0},
                                {size, 1024}]}, erlqueue:info(test))
         end},
+       {<<"Inspect works">>,
+        fun() ->
+            ?assertEqual({ok, test}, erlqueue:new(test, [{size, 1024}])),
+            ?assertEqual({ok, [{valid, false},
+                               {read, true}]}, erlqueue:inspect(test, 0)),
+            ?assertEqual(ok, erlqueue:queue(test, hello)),
+            ?assertEqual({ok, [{valid, true},
+                               {read, false}]}, erlqueue:inspect(test, 0))
+        end},
        {<<"Full queue works">>,
         fun() ->
             ?assertEqual({ok, test},  erlqueue:new(test, [{size, 64}])),

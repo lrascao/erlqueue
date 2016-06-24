@@ -221,3 +221,10 @@ lqueue_stats(lqueue_t *q)
 #endif
     return NULL;
 }
+
+void
+lqueue_inspect(lqueue_t *q, unsigned int position, marker_t *marker)
+{
+    header_t *header = (header_t *) (q->buffer + position);
+    *marker = atomic_load(&header->marker);
+}

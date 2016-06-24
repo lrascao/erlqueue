@@ -272,6 +272,35 @@ nif_info(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return enif_make_list(env, N_INFO_FIELDS, prop_value0, prop_value1, prop_value2, prop_value3);
 }
 
+static ERL_NIF_TERM
+nif_inspect(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+   if (argc != 2 || !enif_is_atom(env, argv[0])
+                 || !enif_is_number(env, argv[1])) {
+      return enif_make_badarg(env);
+    }
+    char name[MAX_QUEUE_NAME];
+    enif_get_atom(env, argv[0], name, MAX_QUEUE_NAME, ERL_NIF_LATIN1);
+    int position;
+    enif_get_int(env, argv[1], &position);
+
+    lqueue_hashed *q_hashed = NULL;
+    HASH_FIND_STR(qs, name, q_hashed);
+    if (q_hashed == NULL)
+      return enif_make_tuple2(env, ATOM_ERROR, ATOM_NO_QUEUE);
+
+    marker_t marker = 0;
+    lqueue_inspect(q_hashed->q, position, &marker);
+
+    ERL_NIF_TERM prop_value0 = erl_mk_atom_prop_value(env, "valid",
+                                    enif_make_atom(env,
+                                                   IS_VALID(marker, position) ? "true" : "false"));
+    ERL_NIF_TERM prop_value1 = erl_mk_atom_prop_value(env, "read",
+                                    enif_make_atom(env,
+                                                   IS_READ(marker) ? "true" : "false"));
+    return enif_make_list(env, 2, prop_value0, prop_value1);
+}
+
 /*********************************************************************/
 
 static void init(ErlNifEnv *env)
@@ -314,6 +343,7 @@ static ErlNifFunc nif_funcs[] = {
   {"nif_byte_size", 1, nif_byte_size},
   {"nif_stats", 1, nif_stats},
   {"nif_info", 1, nif_info},
+  {"nif_inspect", 2, nif_inspect}
 };
 
 ERL_NIF_INIT(erlqueue, nif_funcs, &on_load, NULL, &on_upgrade, &on_unload)
