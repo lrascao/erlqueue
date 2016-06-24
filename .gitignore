@@ -5,3 +5,4 @@ c_src/*.d
 deps/
 ebin/
 priv/
+bench/basho_bench
