@@ -27,7 +27,7 @@ endif
 .PHONY: all compile clean dialyze typer distclean \
   deps rebuild test help bench
 
-all: deps compile
+all: deps compile lib
 
 # =============================================================================
 # Rules to build the system
@@ -39,6 +39,9 @@ deps:
 
 compile:
 	- $(REBAR) skip_deps=true compile
+
+lib: compile
+	ar rcs priv/liblqueue.a c_src/*.o
 
 debug:
 	- DEBUG=true LSTATS=true $(REBAR) skip_deps=true compile
