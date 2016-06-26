@@ -1,0 +1,15 @@
+{application, cnode, [
+    {description, ""},
+    {vsn, "1.0.0"},
+    {registered, []},
+    {applications, [
+        %%tools,          % uncomment to enable profiling
+        kernel,
+        stdlib,
+        public_key,
+        lager,
+        erlqueue
+    ]},
+    {mod, {cnode_app, []}},
+    {env, []}
+]}.

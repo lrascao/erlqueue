@@ -1,0 +1,23 @@
+%% THIS FILE IS GENERATED. DO NOT EDIT IT MANUALLY %%
+
+{erl_opts,[debug_info,
+           {parse_transform,lager_transform},
+           strict_validation,warn_bif_clash,warn_deprecated_function,
+           warn_export_all,warn_export_vars,warn_exported_vars,
+           warn_obsolete_guard,warn_shadow_vars,warn_unused_import,
+           warn_unused_function,warn_unused_record,warn_unused_vars]}.
+{deps,[{goldrush,".*",
+                 {git,"git://github.com/DeadZen/goldrush.git",
+                      "71e63212f12c25827e0c1b4198d37d5d018a7fec"}},
+       {lager,".*",
+              {git,"git://github.com/basho/lager.git",
+                   "d33ccf3b69de09a628fe38b4d7981bb8671b8a4f"}},
+       {rebar_lock_deps_plugin,".*",
+                               {git,"git://github.com/seth/rebar_lock_deps_plugin.git",
+                                    "9711549b8a84b065eb2edc22f8eb6ff85e3c94e8"}},
+       {erlsemaphore,".*",
+                     {git,"git@github.com:lrascao/erlsemaphore.git",
+                          "fbcc5edde967d34bbd99a8c29e4c6274980f63ce"}}]}.
+{post_hooks,[{compile,"make -C priv"},{clean,"make -C priv clean"}]}.
+{plugins,[rebar_lock_deps_plugin]}.
+

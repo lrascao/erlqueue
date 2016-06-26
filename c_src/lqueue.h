@@ -78,8 +78,10 @@ lqueue_dequeue(lqueue_t *q, void **v, size_t *size);
 size_t
 lqueue_byte_size(size_t size);
 
+#ifdef LSTATS
 lstats_t *
 lqueue_stats(lqueue_t *q);
+#endif
 
 void
 lqueue_inspect(lqueue_t *q, unsigned int position, marker_t *marker);

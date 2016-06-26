@@ -4,5 +4,6 @@ c_src/*.o
 c_src/*.d
 deps/
 ebin/
-priv/
+priv/erlqueue.so
+priv/liblqueue.a
 bench/basho_bench
