@@ -51,15 +51,29 @@ test: debug
 
 bench:
 	git clone git://github.com/basho/basho_bench.git bench/basho_bench || true
+	# link all the basho_bench drivers
 	rm -f bench/basho_bench/src/basho_bench_driver_erlqueue.erl
 	ln -s ../../basho_bench_driver_erlqueue.erl \
 		  bench/basho_bench/src/basho_bench_driver_erlqueue.erl
+	rm -f bench/basho_bench/src/basho_bench_driver_cnode.erl
+	ln -s ../../basho_bench_driver_cnode.erl \
+		  bench/basho_bench/src/basho_bench_driver_cnode.erl
 	cd bench/basho_bench; make; cd ..
 	./scripts/ipcrmall
 	cd bench; \
+		rm -rf basho_bench/tests; \
 		basho_bench/basho_bench --results-dir basho_bench/tests \
-			basho_bench_erlqueue.config;
-	cd basho_bench; make results
+			basho_bench_erlqueue.config; \
+		cd basho_bench; make results; \
+		cp tests/current/summary.png erlqueue.summary.`date +%d%b%Y-%H%M%S`.png; \
+		cd ..;\
+		rm -rf basho_bench/tests; \
+		make -C cnode; \
+		basho_bench/basho_bench --node cnode_bench --cookie 12345 --results-dir basho_bench/tests \
+			basho_bench_cnode.config; \
+		cd basho_bench; make results; \
+		cp tests/current/summary.png cnode.summary.`date +%d%b%Y-%H%M%S`.png; \
+	cd ..;
 
 distclean: clean
 	- rm -rf .rebar
