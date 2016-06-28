@@ -86,4 +86,7 @@ lqueue_stats(lqueue_t *q);
 void
 lqueue_inspect(lqueue_t *q, unsigned int position, marker_t *marker);
 
+void
+lqueue_release(void *v, size_t size);
+
 #endif

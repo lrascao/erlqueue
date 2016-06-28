@@ -251,12 +251,9 @@ handle_queued_message()
     if (lqueue_queue(queue_out, v, size) != 0)
         return;
 
-    // scrub the data that we just read
-    // this is an important bit since it's thie srubbing
-    // that will prevent a future queue to end up somewhere
-    // along this buffer and mistakenly interpret random bytes
-    // as a valid header
-    memset(v, 0, size);
+    // ask the lqueue layer to release the pointer
+    // it gave us
+    lqueue_release(v, size);
 
     // and signal the semaphore
      // http://www.tldp.org/LDP/lpg/node52.html#SECTION00743400000000000000

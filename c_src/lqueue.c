@@ -231,3 +231,14 @@ lqueue_inspect(lqueue_t *q, unsigned int position, marker_t *marker)
     header_t *header = (header_t *) (q->buffer + position);
     *marker = atomic_load(&header->marker);
 }
+
+void
+lqueue_release(void *v, size_t size)
+{
+    // scrub the data that we just read
+    // this is an important bit since it's thie srubbing
+    // that will prevent a future queue to end up somewhere
+    // along this buffer and mistakenly interpret random bytes
+    // as a valid header
+    memset(v, 0, size);
+}
