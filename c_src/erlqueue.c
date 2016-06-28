@@ -207,6 +207,7 @@ nif_byte_size(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 static ERL_NIF_TERM
 nif_stats(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
+#ifdef LSTATS
    if (argc != 1 || !enif_is_atom(env, argv[0])) {
       return enif_make_badarg(env);
     }
@@ -245,6 +246,9 @@ nif_stats(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return enif_make_list(env, N_STATS, prop_value0, prop_value1, prop_value2, prop_value3,
                                         prop_value4, prop_value5, prop_value6, prop_value7,
                                         prop_value8);
+#else
+    return enif_make_tuple2(env, ATOM_ERROR, ATOM_INVALID);
+#endif
 }
 
 static ERL_NIF_TERM
