@@ -136,32 +136,43 @@ nif_get(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 }
 
 static ERL_NIF_TERM
-nif_queue(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+scheduled_nif_queue(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    ErlNifBinary bin;
-    if (argc != 2 || !enif_is_atom(env, argv[0]) ||
-        !enif_inspect_binary(env, argv[1], &bin)) {
-      return enif_make_badarg(env);
-    }
     char name[MAX_QUEUE_NAME];
     enif_get_atom(env, argv[0], name, MAX_QUEUE_NAME, ERL_NIF_LATIN1);
+    ErlNifBinary bin;
+    enif_inspect_binary(env, argv[1], &bin);
 
     lqueue_hashed *q_hashed = NULL;
     HASH_FIND_STR(qs, name, q_hashed);
     if (q_hashed == NULL)
       return enif_make_tuple2(env, ATOM_ERROR, ATOM_NO_QUEUE);
 
-    if (lqueue_queue(q_hashed->q, (void*) bin.data, bin.size) == 1)
+    lqueue_status_t lqueue_ret = lqueue_queue(q_hashed->q, (void*) bin.data, bin.size);
+
+    if (lqueue_ret == LQUEUE_FULL)
       return ATOM_QUEUE_FULL;
+    else if (lqueue_ret == LQUEUE_CAS)
+      return enif_schedule_nif(env, "scheduled_nif_queue", 0,
+                               scheduled_nif_queue, argc, argv);
+
     return ATOM_OK;
 }
 
 static ERL_NIF_TERM
-nif_dequeue(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+nif_queue(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    if (argc != 1 || !enif_is_atom(env, argv[0])) {
+    if (argc != 2 || !enif_is_atom(env, argv[0]) ||
+                     !enif_is_binary(env, argv[1])) {
       return enif_make_badarg(env);
     }
+
+    return enif_schedule_nif(env, "scheduled_nif_queue", 0, scheduled_nif_queue, argc, argv);
+}
+
+static ERL_NIF_TERM
+scheduled_nif_dequeue(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
     char name[MAX_QUEUE_NAME];
     enif_get_atom(env, argv[0], name, MAX_QUEUE_NAME, ERL_NIF_LATIN1);
 
@@ -172,8 +183,12 @@ nif_dequeue(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     void *v;
     size_t size = 0;
-    if (lqueue_dequeue(q_hashed->q, &v, &size) == 1)
+    lqueue_status_t ldequeue_ret = lqueue_dequeue(q_hashed->q, &v, &size);
+    if (ldequeue_ret == LQUEUE_EMPTY)
       return ATOM_NOT_FOUND;
+    else if (ldequeue_ret == LQUEUE_CAS)
+      return enif_schedule_nif(env, "scheduled_nif_dequeue", 0,
+                               scheduled_nif_dequeue, argc, argv);
 
     ErlNifBinary bin;
     enif_alloc_binary(size, &bin);
@@ -182,6 +197,16 @@ nif_dequeue(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     // it gave us
     lqueue_release(v, size);
     return enif_make_binary(env, &bin);
+}
+
+static ERL_NIF_TERM
+nif_dequeue(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    if (argc != 1 || !enif_is_atom(env, argv[0])) {
+      return enif_make_badarg(env);
+    }
+
+    return enif_schedule_nif(env, "scheduled_nif_dequeue", 0, scheduled_nif_dequeue, argc, argv);
 }
 
 static ERL_NIF_TERM

@@ -50,6 +50,13 @@ typedef struct {
     _Atomic unsigned int size;
 } header_t;
 
+typedef enum {
+    LQUEUE_OK = 0,
+    LQUEUE_FULL = 1,
+    LQUEUE_CAS = 2,
+    LQUEUE_EMPTY = 3,
+} lqueue_status_t;
+
 #define VALID_MASK(position) (((marker_t)~position) >> 1)
 #define IS_VALID(marker, position) ((marker & VALID_MASK(position)) == VALID_MASK(position))
 #define SET_VALID(marker, position) (marker | VALID_MASK(position))
@@ -69,10 +76,10 @@ lqueue_create(char *name, size_t size);
 void
 lqueue_free(lqueue_t *);
 
-int
+lqueue_status_t
 lqueue_queue(lqueue_t *q, void *v, size_t size);
 
-int
+lqueue_status_t
 lqueue_dequeue(lqueue_t *q, void **v, size_t *size);
 
 size_t

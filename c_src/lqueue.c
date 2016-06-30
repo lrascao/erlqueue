@@ -88,27 +88,30 @@ lqueue_free(lqueue_t *q)
     shmctl(shmid, IPC_RMID, NULL);
 }
 
-int
+lqueue_status_t
 lqueue_queue(lqueue_t *q, void *v, size_t size)
 {
     unsigned int tail = atomic_load(&q->tail);
     unsigned int next_tail;
-    unsigned short wraparound;
+    unsigned short wraparound = 0;
 
     STAT_TIME();
-    do {
-        STAT_SCORE(STAT_QUEUE_TRY, &q->stats);
-        wraparound = 0;
-        next_tail = tail + sizeof(header_t) + size;
-        // if this write plus an extra header would exceed the buffer limits
-        // then reset and start from the top
-        // this gives the assurance that we always have enough
-        // to write a special end of queue header
-        if ((next_tail + sizeof(header_t)) > q->size) {
-            next_tail = 0;
-            wraparound = 1;
-        }
-    } while (!atomic_compare_exchange_weak(&q->tail, &tail, next_tail));
+
+    STAT_SCORE(STAT_QUEUE_TRY, &q->stats);
+    next_tail = tail + sizeof(header_t) + size;
+    // if this write plus an extra header would exceed the buffer limits
+    // then reset and start from the top
+    // this gives the assurance that we always have enough
+    // to write a special end of queue header
+    if ((next_tail + sizeof(header_t)) > q->size) {
+        next_tail = 0;
+        wraparound = 1;
+    }
+
+    // perform the atomic CAS operation, if we don't get the expected value
+    // return the status up where a retry will then be asked for.
+    if (!atomic_compare_exchange_weak(&q->tail, &tail, next_tail))
+        return LQUEUE_CAS;
 
     if (wraparound) {
         STAT_SCORE(STAT_OVERFLOW, &q->stats);
@@ -146,53 +149,56 @@ lqueue_queue(lqueue_t *q, void *v, size_t size)
     STAT_VALUE_SCORE(STAT_MAX_QUEUE_TIME_MICROS, STAT_TIME_DIFF(), &q->stats);
     STAT_VALUE_SCORE(STAT_QUEUE_TIME_MICROS, STAT_TIME_DIFF(), &q->stats);
     STAT_SCORE(STAT_QUEUE, &q->stats);
-    return 0;
+    return LQUEUE_OK;
 }
 
-int
+lqueue_status_t
 lqueue_dequeue(lqueue_t *q, void **v, size_t *size)
 {
     unsigned int head = atomic_load(&q->head);
     unsigned int tail = atomic_load(&q->tail);
     unsigned int next_head = 0;
-    unsigned short wraparound;
+    unsigned short wraparound = 0;
     header_t *header = NULL;
     marker_t marker = 0;
     unsigned int header_size;
 
     STAT_TIME();
-    do {
-        STAT_SCORE(STAT_DEQUEUE_TRY, &q->stats);
-        wraparound = 0;
-        header = (header_t *) (q->buffer + head);
-        // load the marker atomically for the same
-        // we store it atomically in queue
-        marker = atomic_load(&header->marker);
-        header_size = atomic_load(&header->size);
-        // we're up against the end of the queue and there's
-        // nothing more to read
-        if (head == tail) {
-            // this is an invalid block or valid one that's already been read
-            if (!IS_VALID(marker, head) || IS_READ(marker))
-                return 1;
-        }
-        // only try to read blocks that are valid and unread
-        if (!IS_VALID(marker, head) || IS_READ(marker))
-            return 1;
+    STAT_SCORE(STAT_DEQUEUE_TRY, &q->stats);
 
-        next_head = head + sizeof(header_t) + header_size;
-        if (next_head > q->size) {
-            next_head = 0;
-            wraparound = 1;
-        }
-    } while (!atomic_compare_exchange_weak(&q->head, &head, next_head));
+    header = (header_t *) (q->buffer + head);
+    // load the marker atomically for the same
+    // we store it atomically in queue
+    marker = atomic_load(&header->marker);
+    header_size = atomic_load(&header->size);
+    // we're up against the end of the queue and there's
+    // nothing more to read
+    if (head == tail) {
+        // this is an invalid block or valid one that's already been read
+        if (!IS_VALID(marker, head) || IS_READ(marker))
+            return LQUEUE_EMPTY;
+    }
+    // only try to read blocks that are valid and unread
+    if (!IS_VALID(marker, head) || IS_READ(marker))
+        return LQUEUE_EMPTY;
+
+    next_head = head + sizeof(header_t) + header_size;
+    if (next_head > q->size) {
+        next_head = 0;
+        wraparound = 1;
+    }
+
+    // perform the atomic CAS operation, if we don't get the expected value
+    // return the status up where a retry will then be asked for.
+    if (!atomic_compare_exchange_weak(&q->head, &head, next_head))
+        return LQUEUE_CAS;
 
     if (wraparound) {
         STAT_SCORE(STAT_OVERFLOW, &q->stats);
         // we've reached the end of the queue
         // so just mark this block as read and try again
         atomic_store(&header->marker, SET_READ(VALID_MASK(head)));
-        return lqueue_dequeue(q, v, size);
+        return LQUEUE_CAS;
     }
     else {
         // extract the queued value
@@ -206,7 +212,7 @@ lqueue_dequeue(lqueue_t *q, void **v, size_t *size)
     STAT_VALUE_SCORE(STAT_MAX_DEQUEUE_TIME_MICROS, STAT_TIME_DIFF(), &q->stats);
     STAT_VALUE_SCORE(STAT_DEQUEUE_TIME_MICROS, STAT_TIME_DIFF(), &q->stats);
     STAT_SCORE(STAT_DEQUEUE, &q->stats);
-    return 0;
+    return LQUEUE_OK;
 }
 
 size_t
