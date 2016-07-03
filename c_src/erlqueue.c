@@ -99,7 +99,7 @@ nif_delete(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     lqueue_hashed *q_hashed = NULL;
     HASH_FIND_STR(qs, name, q_hashed);
     if (q_hashed == NULL)
-      return ATOM_ERROR;
+      return enif_make_tuple2(env, ATOM_ERROR, ATOM_NOT_FOUND);
 
     HASH_DEL(qs, q_hashed);
     lqueue_free(q_hashed->q);
@@ -151,7 +151,7 @@ scheduled_nif_queue(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     lqueue_status_t lqueue_ret = lqueue_queue(q_hashed->q, (void*) bin.data, bin.size);
 
     if (lqueue_ret == LQUEUE_FULL)
-      return ATOM_QUEUE_FULL;
+      return enif_make_tuple2(env, ATOM_ERROR, ATOM_QUEUE_FULL);
     else if (lqueue_ret == LQUEUE_CAS)
       return enif_schedule_nif(env, "scheduled_nif_queue", 0,
                                scheduled_nif_queue, argc, argv);
@@ -185,7 +185,7 @@ scheduled_nif_dequeue(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     size_t size = 0;
     lqueue_status_t ldequeue_ret = lqueue_dequeue(q_hashed->q, &v, &size);
     if (ldequeue_ret == LQUEUE_EMPTY)
-      return ATOM_NOT_FOUND;
+      return enif_make_tuple2(env, ATOM_ERROR, ATOM_NOT_FOUND);
     else if (ldequeue_ret == LQUEUE_CAS)
       return enif_schedule_nif(env, "scheduled_nif_dequeue", 0,
                                scheduled_nif_dequeue, argc, argv);
@@ -243,7 +243,7 @@ nif_stats(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     lstats_t *stats = lqueue_stats(q_hashed->q);
     if (stats == NULL)
-      return ATOM_NOT_FOUND;
+      return enif_make_tuple2(env, ATOM_ERROR, ATOM_NOT_FOUND);
 
     // convert the lstats_t struct to a proplist
     ERL_NIF_TERM prop_value0 = erl_mk_atom_prop_value(env, "queues",

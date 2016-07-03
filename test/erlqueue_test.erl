@@ -47,7 +47,7 @@ basic_test_() ->
        {<<"Empty Dequeue works">>,
         fun() ->
             ?assertEqual({ok, test}, erlqueue:new(test, [{size, 1024}])),
-            ?assertEqual(not_found, erlqueue:dequeue(test))
+            ?assertEqual({error, not_found}, erlqueue:dequeue(test))
         end},
        {<<"Info works">>,
         fun() ->
@@ -71,7 +71,7 @@ basic_test_() ->
             ?assertEqual({ok, test},  erlqueue:new(test, [{size, 64}])),
             ?assertEqual(ok, erlqueue:queue(test, hellohello)),
             ?assertEqual(ok, erlqueue:queue(test, hellohello)),
-            ?assertEqual(queue_is_full, erlqueue:queue(test, hellohello))
+            ?assertEqual({error, queue_is_full}, erlqueue:queue(test, hellohello))
         end},
        {<<"Circular buffer works">>,
         fun() ->
@@ -89,12 +89,12 @@ basic_test_() ->
             ?assertEqual(ok, erlqueue:queue(test, a12)),
             ?assertEqual({ok, a1}, erlqueue:dequeue(test)),
             ?assertEqual({ok, a12}, erlqueue:dequeue(test)),
-            ?assertEqual(not_found, erlqueue:dequeue(test)),
+            ?assertEqual({error, not_found}, erlqueue:dequeue(test)),
             ?assertEqual(ok, erlqueue:queue(test, a1234)),
             ?assertEqual({ok, a1234}, erlqueue:dequeue(test)),
             ?assertEqual(ok, erlqueue:queue(test, a12345)),
             ?assertEqual({ok, a12345}, erlqueue:dequeue(test)),
-            ?assertEqual(not_found, erlqueue:dequeue(test))
+            ?assertEqual({error, not_found}, erlqueue:dequeue(test))
         end},
        {<<"Proper order">>,
         fun() ->
@@ -106,7 +106,7 @@ basic_test_() ->
           Output = lists:map(fun(_) ->
                               N = case erlqueue:dequeue(test) of
                                     {ok, N0} -> N0;
-                                    not_found -> undefined
+                                    {error, not_found} -> undefined
                                   end,
                               N
                              end, L),
@@ -118,18 +118,18 @@ basic_test_() ->
             ?assertEqual(ok, erlqueue:queue(test, a1)),
             ?assertEqual(ok, erlqueue:queue(test, a1)),
             ?assertEqual(ok, erlqueue:queue(test, a1)),
-            ?assertEqual(queue_is_full, erlqueue:queue(test, a2222222222222)),
+            ?assertEqual({error, queue_is_full}, erlqueue:queue(test, a2222222222222)),
             ?assertEqual({ok, a1}, erlqueue:dequeue(test)),
             ?assertEqual({ok, a1}, erlqueue:dequeue(test)),
             ?assertEqual({ok, a1}, erlqueue:dequeue(test)),
-            ?assertEqual(not_found, erlqueue:dequeue(test))
+            ?assertEqual({error, not_found}, erlqueue:dequeue(test))
         end},
        {<<"Exceeding the total queue size doesn't crash">>,
         fun() ->
             ?assertEqual({ok, test}, erlqueue:new(test, [{size, 64}])),
             ?assertEqual(ok, erlqueue:queue(test, an_atom)),
             ?assertEqual(ok, erlqueue:queue(test, <<"a binary">>)),
-            ?assertEqual(queue_is_full, erlqueue:queue(test, [{a, proplist},
+            ?assertEqual({error, queue_is_full}, erlqueue:queue(test, [{a, proplist},
                                                               {containing, <<"binaries">>}]))
         end}
        ]

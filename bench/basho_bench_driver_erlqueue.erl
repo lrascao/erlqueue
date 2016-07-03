@@ -29,14 +29,14 @@ run(get, _KeyGen, _ValueGen,
     #state{queue = Queue} = State) ->
     case erlqueue:dequeue(Queue) of
         {ok, _} -> {ok, State};
-        not_found -> {error, not_found, State}
+        {error, not_found} -> {error, not_found, State}
     end;
 run(put, _KeyGen, ValueGen,
     #state{queue = Queue} = State) ->
     Value = ValueGen(),
     case erlqueue:queue(Queue, Value) of
         ok -> {ok, State};
-        queue_is_full -> {error, queue_is_full, State}
+        {error, queue_is_full} -> {error, queue_is_full, State}
     end;
 run(delete, _KeyGen, _ValueGen,
     #state{queue = Queue} = State) ->

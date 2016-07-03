@@ -63,7 +63,7 @@ run(wait, _KeyGen, _ValueGen,
             case erlqueue:dequeue(InQueue) of
                 {ok, _} ->
                     {ok, State};
-                not_found -> {error, not_found, State}
+                {error, not_found} -> {error, not_found, State}
             end;
         {error, would_block} ->
             {error, would_block, State}
@@ -77,6 +77,6 @@ run(signal, _KeyGen, ValueGen,
             %% make a resource available
             ok = erlsemaphore:signal(OutSemaphore, 1),
             {ok, State};
-        queue_is_full ->
+        {error, queue_is_full} ->
             {error, queue_is_full, State}
     end.

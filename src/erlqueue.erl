@@ -43,7 +43,7 @@ new(Name, Opts) ->
     Size = proplists:get_value(size, Opts),
     nif_new(Name, Size).
 
--spec delete(Name :: atom()) -> error | {ok, atom()}.
+-spec delete(Name :: atom()) -> {error, not_found} | {ok, atom()}.
 delete(Name) ->
     nif_delete(Name).
 
@@ -57,10 +57,9 @@ queue(Name, Bin) when is_binary(Bin) ->
 queue(Name, Term) ->
     nif_queue(Name, term_to_binary(Term)).
 
--spec dequeue(Name :: atom()) -> not_found | {error, no_queue} | {ok, term()}.
+-spec dequeue(Name :: atom()) -> {error, no_queue | not_found} | {ok, term()}.
 dequeue(Name) ->
     case nif_dequeue(Name) of
-        not_found -> not_found;
         {error, _} = Error -> Error;
         << ?BINARY_MARKER, Bin/binary>> ->
             {ok, Bin};
@@ -71,27 +70,24 @@ dequeue(Name) ->
 byte_size(Term) ->
     nif_byte_size(term_to_binary(Term)).
 
--spec stats(Name :: atom()) -> not_found | {ok, proplists:proplist()}.
+-spec stats(Name :: atom()) -> {error, not_found} | {ok, proplists:proplist()}.
 stats(Name) ->
     case nif_stats(Name) of
-        not_found -> not_found;
         {error, _} = Error -> Error;
         T -> {ok, T}
     end.
 
--spec info(Name :: atom()) -> not_found | {ok, proplists:proplist()}.
+-spec info(Name :: atom()) -> {error, not_found} | {ok, proplists:proplist()}.
 info(Name) ->
     case nif_info(Name) of
-        not_found -> not_found;
         {error, _} = Error -> Error;
         T -> {ok, T}
     end.
 
 -spec inspect(Name :: atom(),
-              Position :: non_neg_integer()) -> not_found | {ok, proplists:proplist()}.
+              Position :: non_neg_integer()) -> {error, not_found} | {ok, proplists:proplist()}.
 inspect(Name, Position) ->
     case nif_inspect(Name, Position) of
-        not_found -> not_found;
         {error, _} = Error -> Error;
         T -> {ok, T}
     end.
