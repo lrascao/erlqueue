@@ -27,6 +27,7 @@ endif
 .PHONY: all compile clean dialyze typer distclean \
   deps rebuild test help bench
 
+travis: deps compile lib test
 all: deps compile lib
 
 # =============================================================================

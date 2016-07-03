@@ -1,0 +1,10 @@
+# Ubuntu 14.04 Trusty support
+sudo: required
+dist: trusty
+language: erlang
+otp_release:
+  - 19
+  - 18.3
+  - 17.5
+  - R16B03-1
+script: make travis

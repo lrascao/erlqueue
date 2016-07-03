@@ -2,6 +2,8 @@
 
 [erlqueue](https://github.com/lrascao/erlqueue) is a multiple writer, multiple reader bounded shared memory lock-free queue API for Erlang (through NIF) and C/C++.
 
+[![Build Status](https://travis-ci.org/lrascao/erlqueue.svg?branch=develop)](https://travis-ci.org/lrascao/erlqueue)
+
 ## Introduction
 
 Communication between the Erlang VM and [Cnodes](http://erlang.org/doc/tutorial/cnode.html) and [Cports](http://erlang.org/doc/tutorial/c_port.html) is usually through a TCP connection (in the case of Cnodes) or pipes (in the case of Cports), this package offers another alternative with a significant speedup relative to the pipe/TCP alternative.
