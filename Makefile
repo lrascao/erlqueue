@@ -52,7 +52,7 @@ clean:
 test: debug
 	- $(REBAR) eunit
 
-bench: bench/basho_bench erlqueue_bench cnode_bench erlqueue_cnode_bench
+bench: erlqueue_bench cnode_bench erlqueue_cnode_bench
 
 bench/basho_bench:
 	git clone git://github.com/basho/basho_bench.git bench/basho_bench || true
@@ -68,7 +68,7 @@ bench/basho_bench:
 		  bench/basho_bench/src/basho_bench_driver_erlqueue_cnode.erl
 	cd bench/basho_bench; make; cd ..
 
-erlqueue_bench:
+erlqueue_bench: bench/basho_bench
 	./scripts/ipcrmall
 	cd bench; \
 		rm -rf basho_bench/tests; \
@@ -77,7 +77,7 @@ erlqueue_bench:
 		cd basho_bench; make results; \
 		cp tests/current/summary.png erlqueue.summary.`date +%d%b%Y-%H%M%S`.png
 
-cnode_bench:
+cnode_bench: bench/basho_bench
 	cd bench; \
 		rm -rf basho_bench/tests; \
 		make -C cnode; \
@@ -87,7 +87,7 @@ cnode_bench:
 		cd basho_bench; make results; \
 		cp tests/current/summary.png cnode.summary.`date +%d%b%Y-%H%M%S`.png;
 
-erlqueue_cnode_bench:
+erlqueue_cnode_bench: bench/basho_bench
 	cd bench; \
 		rm -rf basho_bench/tests; \
 		make -C erlqueue_cnode; \
