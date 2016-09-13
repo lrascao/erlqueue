@@ -91,14 +91,22 @@ lqueue_free(lqueue_t *q)
 lqueue_status_t
 lqueue_queue(lqueue_t *q, void *v, size_t size)
 {
-    unsigned int tail = atomic_load(&q->tail);
+    unsigned int tail, tail1;
     unsigned int next_tail;
     unsigned short wraparound = 0;
 
     STAT_TIME();
 
     STAT_SCORE(STAT_QUEUE_TRY, &q->stats);
+
+    // http://dl.acm.org/ft_gateway.cfm?id=2991130&ftid=1782240&dwn=1
+    // atomically increment the list tail, tail will contain the previous
+    // value before incrementing it
+    // using this strategy we reduce the chance of a CAS miss thus
+    // increasing throughput
+    tail = atomic_fetch_add(&q->tail, sizeof(header_t) + size);
     next_tail = tail + sizeof(header_t) + size;
+    tail1 = next_tail;
     // if this write plus an extra header would exceed the buffer limits
     // then reset and start from the top
     // this gives the assurance that we always have enough
@@ -110,7 +118,7 @@ lqueue_queue(lqueue_t *q, void *v, size_t size)
 
     // perform the atomic CAS operation, if we don't get the expected value
     // return the status up where a retry will then be asked for.
-    if (!atomic_compare_exchange_weak(&q->tail, &tail, next_tail))
+    if (!atomic_compare_exchange_weak(&q->tail, &tail1, next_tail))
         return LQUEUE_CAS;
 
     if (wraparound) {
@@ -156,6 +164,7 @@ lqueue_status_t
 lqueue_dequeue(lqueue_t *q, void **v, size_t *size)
 {
     unsigned int head = atomic_load(&q->head);
+    unsigned int head1;
     unsigned int tail = atomic_load(&q->tail);
     unsigned int next_head = 0;
     unsigned short wraparound = 0;
@@ -182,7 +191,9 @@ lqueue_dequeue(lqueue_t *q, void **v, size_t *size)
     if (!IS_VALID(marker, head) || IS_READ(marker))
         return LQUEUE_EMPTY;
 
+    head = atomic_fetch_add(&q->head, sizeof(header_t) + header_size);
     next_head = head + sizeof(header_t) + header_size;
+    head1 = next_head;
     if (next_head > q->size) {
         next_head = 0;
         wraparound = 1;
@@ -190,7 +201,7 @@ lqueue_dequeue(lqueue_t *q, void **v, size_t *size)
 
     // perform the atomic CAS operation, if we don't get the expected value
     // return the status up where a retry will then be asked for.
-    if (!atomic_compare_exchange_weak(&q->head, &head, next_head))
+    if (!atomic_compare_exchange_weak(&q->head, &head1, next_head))
         return LQUEUE_CAS;
 
     if (wraparound) {
